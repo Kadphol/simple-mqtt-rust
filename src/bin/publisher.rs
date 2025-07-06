@@ -1,5 +1,5 @@
-mod lib;
 use log::error;
+use simple_mqtt::{MessageType, MqttMessage};
 use std::io::{self, Write};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
@@ -28,8 +28,8 @@ impl Publisher {
         topic: &str,
         payload: &str,
     ) -> anyhow::Result<()> {
-        let message = lib::MqttMessage::new(
-            lib::MessageType::Publish,
+        let message = MqttMessage::new(
+            MessageType::Publish,
             topic.to_string(),
             Some(payload.to_string()),
             self.client_id.clone(),

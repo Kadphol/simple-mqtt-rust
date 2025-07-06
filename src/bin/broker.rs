@@ -1,5 +1,5 @@
-mod lib;
 use log::{error, info, warn};
+use simple_mqtt::{Client, MessageType, MqttMessage, Topics};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -9,8 +9,8 @@ use tokio::sync::{mpsc, Mutex};
 
 #[derive(Clone)]
 pub struct Broker {
-    topics: Arc<Mutex<lib::Topics>>,
-    clients: Arc<Mutex<HashMap<String, lib::Client>>>,
+    topics: Arc<Mutex<Topics>>,
+    clients: Arc<Mutex<HashMap<String, Client>>>,
 }
 
 impl Broker {
@@ -46,7 +46,7 @@ impl Broker {
         let mut reader = BufReader::new(rx);
         let (sender, mut receiver) = mpsc::unbounded_channel();
 
-        let client = lib::Client::new(addr, sender);
+        let client = Client::new(addr, sender);
         let client_id = client.id.clone();
 
         // Add client to the broker
@@ -85,7 +85,7 @@ impl Broker {
                         continue;
                     }
 
-                    match lib::MqttMessage::deserialize(line) {
+                    match MqttMessage::deserialize(line) {
                         Ok(msg) => {
                             if let Err(e) = self.process_message(msg, &client_id).await {
                                 error!("Error processing message: {}", e);
@@ -108,20 +108,20 @@ impl Broker {
         Ok(())
     }
 
-    async fn process_message(&self, msg: lib::MqttMessage, client_id: &str) -> anyhow::Result<()> {
+    async fn process_message(&self, msg: MqttMessage, client_id: &str) -> anyhow::Result<()> {
         match msg.msg_type {
-            lib::MessageType::Subscribe => {
+            MessageType::Subscribe => {
                 info!("Client {} subscribing to topic: {}", client_id, msg.topic);
                 println!("Client {} subscribing to topic: {}", client_id, msg.topic);
                 self.subscribe_client(client_id, &msg.topic).await?;
             }
-            lib::MessageType::Publish => {
+            MessageType::Publish => {
                 info!("Publishing to topic {}: {:?}", msg.topic, msg.payload);
                 println!("Publishing to topic {}: {:?}", msg.topic, msg.payload);
                 self.publish_message(&msg.topic, msg.payload.as_deref().unwrap_or(""))
                     .await?;
             }
-            lib::MessageType::Unsubscribe => {
+            MessageType::Unsubscribe => {
                 info!(
                     "Client {} unsubscribing from topic: {}",
                     client_id, msg.topic
@@ -132,7 +132,7 @@ impl Broker {
                 );
                 self.unsubscribe_client(client_id, &msg.topic).await?;
             }
-            lib::MessageType::Disconnect => {
+            MessageType::Disconnect => {
                 info!("Client {} requested disconnect", client_id);
                 println!("Client {} requested disconnect", client_id);
                 self.cleanup_client(client_id).await;

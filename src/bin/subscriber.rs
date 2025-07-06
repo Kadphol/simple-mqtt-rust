@@ -1,6 +1,5 @@
-mod lib;
-
-use log::error;
+use log::{error, info};
+use simple_mqtt::{MessageType, MqttMessage};
 use std::io::{self, Write};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpStream;
@@ -25,8 +24,8 @@ impl Subscriber {
     }
 
     async fn subscribe(&self, stream: &mut TcpStream, topic: &str) -> anyhow::Result<()> {
-        let message = lib::MqttMessage::new(
-            lib::MessageType::Subscribe,
+        let message = MqttMessage::new(
+            MessageType::Subscribe,
             topic.to_string(),
             None,
             self.client_id.clone(),
